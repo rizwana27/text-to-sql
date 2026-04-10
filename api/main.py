@@ -26,11 +26,15 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Allow the Vite dev server and production frontend to call the API
+# Allow the Vite dev server and production frontend to call the API.
+# ALLOWED_ORIGINS env var should be a comma-separated list of trusted origins in
+# production (e.g. "https://yourdomain.com"). Defaults to "*" for local dev only.
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
+_allowed_origins: list[str] = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict to specific origins in production (e.g. ["https://yourdomain.com"])
-    allow_credentials=False,  # Must be False when allow_origins=["*"]
+    allow_origins=_allowed_origins,
+    allow_credentials=False,  # Must be False when allow_origins contains "*"
     allow_methods=["*"],
     allow_headers=["*"],
 )

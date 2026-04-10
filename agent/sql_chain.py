@@ -157,12 +157,23 @@ def _log_query(
 
 
 def _execute_sql(sql: str) -> list[dict[str, Any]]:
-    """Run a SQL query and return results as a list of dicts."""
+    """Run a SQL query and return results as a list of dicts.
+
+    A LIMIT clause is injected for SELECT queries so that the response stays
+    manageable.  Non-SELECT queries (writes) are rejected by the HITL guard
+    before they reach this function, so we only need to protect against large
+    reads here.
+    """
+    _MAX_ROWS = 1000
+    # Inject a LIMIT only for SELECT statements that don't already have one
+    normalised = sql.strip().upper()
+    if normalised.startswith("SELECT") and "LIMIT" not in normalised:
+        sql = sql.rstrip(";").rstrip() + f" LIMIT {_MAX_ROWS}"
     engine = get_engine()
     with engine.connect() as conn:
         result = conn.execute(text(sql))
         columns = list(result.keys())
-        rows = result.fetchmany(1000)
+        rows = result.fetchall()
         return [dict(zip(columns, row)) for row in rows]
 
 
