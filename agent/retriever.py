@@ -66,7 +66,17 @@ def get_relevant_schema(query: str, k: int = 3) -> str:
     """
     try:
         collection = _get_collection()
-        results = collection.query(query_texts=[query], n_results=min(k, collection.count()))
+        collection_count = collection.count()
+        if collection_count == 0:
+            logger.debug("Schema collection is empty; returning empty context for query: %s", query)
+            return ""
+
+        n_results = min(k, collection_count)
+        if n_results < 1:
+            logger.debug("Requested n_results=%d; returning empty context for query: %s", n_results, query)
+            return ""
+
+        results = collection.query(query_texts=[query], n_results=n_results)
         documents: list[str] = results["documents"][0]  # type: ignore[index]
         logger.debug("Retrieved %d schema snippets for query: %s", len(documents), query)
         return "\n\n---\n\n".join(documents)
