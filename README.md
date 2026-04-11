@@ -2,7 +2,7 @@
 
 Ask a question in plain English. Get back a SQL query and real results from the database. No SQL knowledge required.
 
-> **Audience:** This README is written for new contributors. No prior knowledge of LLMs or vector databases is assumed.
+> **Audience:** No prior knowledge of LLMs or vector databases is assumed.
 
 ---
 
