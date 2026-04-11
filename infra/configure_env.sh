@@ -20,28 +20,21 @@ CHROMA_PERSIST_DIR="${CHROMA_PERSIST_DIR:-$APP_DIR/chroma_store}"
 EMBEDDING_MODEL="${EMBEDDING_MODEL:-text-embedding-3-small}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
-cat > "$ENV_FILE" <<EOF
+cat > "$ENV_FILE" <<'COMMENTS'
 # OpenAI configuration
 # OPENAI_API_KEY: Secret key from https://platform.openai.com/api-keys
-OPENAI_API_KEY=${OPENAI_API_KEY}
-
-# OPENAI_MODEL: Which GPT model to use. gpt-4o is recommended for SQL accuracy.
-OPENAI_MODEL=${OPENAI_MODEL}
-
-# Database connection string.
-# SQLite for dev/staging; set to postgresql://user:pass@host/db for production.
-DATABASE_URL=${DATABASE_URL}
-
-# ChromaDB vector store persistence directory.
-# Must be an absolute path in production so gunicorn workers can find it.
-CHROMA_PERSIST_DIR=${CHROMA_PERSIST_DIR}
-
-# OpenAI embedding model. text-embedding-3-small is cheap and accurate enough.
-EMBEDDING_MODEL=${EMBEDDING_MODEL}
-
-# Python logging level. Use INFO in production, DEBUG only for troubleshooting.
-LOG_LEVEL=${LOG_LEVEL}
-EOF
+COMMENTS
+printf 'OPENAI_API_KEY=%q\n' "$OPENAI_API_KEY"    >> "$ENV_FILE"
+printf '\n# OPENAI_MODEL: Which GPT model to use. gpt-4o is recommended for SQL accuracy.\n' >> "$ENV_FILE"
+printf 'OPENAI_MODEL=%q\n' "$OPENAI_MODEL"         >> "$ENV_FILE"
+printf '\n# Database connection string.\n# SQLite for dev/staging; set to postgresql://user:pass@host/db for production.\n' >> "$ENV_FILE"
+printf 'DATABASE_URL=%q\n' "$DATABASE_URL"          >> "$ENV_FILE"
+printf '\n# ChromaDB vector store persistence directory.\n# Must be an absolute path in production so gunicorn workers can find it.\n' >> "$ENV_FILE"
+printf 'CHROMA_PERSIST_DIR=%q\n' "$CHROMA_PERSIST_DIR" >> "$ENV_FILE"
+printf '\n# OpenAI embedding model. text-embedding-3-small is cheap and accurate enough.\n' >> "$ENV_FILE"
+printf 'EMBEDDING_MODEL=%q\n' "$EMBEDDING_MODEL"    >> "$ENV_FILE"
+printf '\n# Python logging level. Use INFO in production, DEBUG only for troubleshooting.\n' >> "$ENV_FILE"
+printf 'LOG_LEVEL=%q\n' "$LOG_LEVEL"                >> "$ENV_FILE"
 
 chmod 600 "$ENV_FILE"   # Only owner (ubuntu) can read — prevents other users from seeing the key
 echo "✅ .env written to $ENV_FILE with permissions 600."
