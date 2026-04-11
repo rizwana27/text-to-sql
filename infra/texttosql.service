@@ -1,0 +1,47 @@
+# INTERN NOTE: systemd vs nohup
+# nohup is a quick hack: it detaches a process from the terminal but provides
+# no restart-on-failure, no log management, no dependency ordering, and no
+# standard way to check status. If the server crashes at 3am, nothing restarts it.
+# systemd is the production standard: it restarts on failure (Restart=always),
+# logs to journald (journalctl -u texttosql), starts after networking is up
+# (After=network.target), and integrates with `systemctl status/start/stop/enable`.
+# Always use systemd (or supervisord, or a container orchestrator) in production.
+
+[Unit]
+Description=Text-to-SQL FastAPI Application
+After=network.target
+Documentation=https://github.com/your-org/text-to-sql
+
+[Service]
+Type=exec
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/text-to-sql
+
+# Load secrets from .env file (chmod 600, never committed to git)
+EnvironmentFile=/opt/text-to-sql/.env
+
+# gunicorn: 4 async uvicorn workers, bound to localhost only (nginx proxies)
+# --timeout 120: allow up to 2 min for slow LLM calls before killing a worker
+# --keep-alive 5: HTTP keep-alive for nginx upstream connections
+ExecStart=/opt/text-to-sql/venv/bin/gunicorn \
+    api.main:app \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --workers 4 \
+    --bind 127.0.0.1:8000 \
+    --timeout 120 \
+    --keep-alive 5 \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info
+
+# Restart policy: always restart on crash, with 5s delay to avoid tight loops
+Restart=always
+RestartSec=5
+
+# Resource limits
+LimitNOFILE=65535       # Max open file descriptors (ChromaDB + SQLite need many)
+TimeoutStopSec=30       # Graceful shutdown window before SIGKILL
+
+[Install]
+WantedBy=multi-user.target
