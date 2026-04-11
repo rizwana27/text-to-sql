@@ -158,16 +158,33 @@ def _log_query(
 def _execute_sql(sql: str) -> list[dict[str, Any]]:
     """Run a SQL query and return results as a list of dicts.
 
+    Only single-statement SELECT or WITH (CTE) queries are permitted.
+    Any other statement type, or a multi-statement payload, raises ValueError
+    so callers receive a clear error instead of executing unexpected SQL.
+
     A LIMIT clause is injected for SELECT queries so that the response stays
-    manageable.  Non-SELECT queries (writes) are rejected by the HITL guard
-    before they reach this function, so we only need to protect against large
-    reads here.
+    manageable.
     """
     _MAX_ROWS = 1000
-    # Inject a LIMIT only for SELECT statements that don't already have one
-    normalised = sql.strip().upper()
-    if normalised.startswith("SELECT") and "LIMIT" not in normalised:
-        sql = sql.rstrip(";").rstrip() + f" LIMIT {_MAX_ROWS}"
+    normalised = sql.strip()
+
+    # Reject multi-statement payloads: strip one trailing semicolon then check
+    # for any remaining semicolons which would indicate a second statement.
+    if ";" in normalised.rstrip(";"):
+        raise ValueError("Multi-statement SQL is not allowed")
+
+    # Allowlist: only SELECT and WITH (CTEs that start WITH … SELECT) are safe
+    # read-only operations.  Everything else (PRAGMA, ATTACH, INSERT, …) is
+    # rejected here regardless of what upstream guards may have passed.
+    first_token = normalised.split()[0].upper() if normalised.split() else ""
+    if first_token not in {"SELECT", "WITH"}:
+        raise ValueError(
+            f"Only SELECT/WITH queries are permitted; got: {first_token!r}"
+        )
+
+    normalised_upper = normalised.upper()
+    if first_token == "SELECT" and "LIMIT" not in normalised_upper:
+        sql = normalised.rstrip(";").rstrip() + f" LIMIT {_MAX_ROWS}"
     engine = get_engine()
     with engine.connect() as conn:
         result = conn.execute(text(sql))

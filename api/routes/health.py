@@ -4,6 +4,7 @@ api/routes/health.py — /api/health liveness and readiness check.
 
 import logging
 import os
+import time
 from typing import Any
 
 import chromadb
@@ -15,6 +16,11 @@ from model.database import get_engine
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["health"])
 
+# Cache the OpenAI key-presence result so we don't hit the API (or even do
+# expensive instantiation) on every health-check request.
+_openai_check_cache: dict[str, Any] = {}
+_OPENAI_CACHE_TTL = 60  # seconds
+
 
 @router.get("/health")
 async def health_check() -> dict[str, Any]:
@@ -22,7 +28,7 @@ async def health_check() -> dict[str, Any]:
     Check connectivity for:
     - Database (SQLite or PostgreSQL via SQLAlchemy)
     - ChromaDB vector store
-    - OpenAI API (lightweight ping)
+    - OpenAI API key presence (cached for 60 s to avoid per-request API calls)
     """
     status: dict[str, Any] = {
         "status": "ok",
@@ -49,20 +55,29 @@ async def health_check() -> dict[str, Any]:
         status["checks"]["chromadb"] = f"error: {exc}"
         status["status"] = "degraded"
 
-    # --- OpenAI check ---
-    try:
-        import openai
+    # --- OpenAI check (key presence only, cached) ---
+    now = time.monotonic()
+    if _openai_check_cache.get("expires_at", 0) > now:
+        status["checks"]["openai"] = _openai_check_cache["result"]
+        if _openai_check_cache.get("degraded"):
+            status["status"] = "degraded"
+    else:
+        try:
+            api_key = os.getenv("OPENAI_API_KEY", "")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY not set")
+            openai_result = "ok (key present)"
+            degraded = False
+        except Exception as exc:
+            openai_result = f"error: {exc}"
+            degraded = True
 
-        api_key = os.getenv("OPENAI_API_KEY", "")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY not set")
-        client_oai = openai.OpenAI(api_key=api_key)
-        # Minimal, cheap call — list models endpoint
-        models = client_oai.models.list()
-        gpt4o_available = any("gpt-4o" in m.id for m in models.data)
-        status["checks"]["openai"] = f"ok (gpt-4o available: {gpt4o_available})"
-    except Exception as exc:
-        status["checks"]["openai"] = f"error: {exc}"
-        status["status"] = "degraded"
+        status["checks"]["openai"] = openai_result
+        if degraded:
+            status["status"] = "degraded"
+
+        _openai_check_cache["result"] = openai_result
+        _openai_check_cache["degraded"] = degraded
+        _openai_check_cache["expires_at"] = now + _OPENAI_CACHE_TTL
 
     return status

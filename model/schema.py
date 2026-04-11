@@ -11,6 +11,7 @@
 from sqlalchemy import (
     Column,
     Integer,
+    Numeric,
     String,
     Float,
     Boolean,
@@ -34,8 +35,8 @@ class FactOrders(Base):
     user_id = Column(String(64), ForeignKey("dim_users.user_id"), nullable=True, index=True)
     product_id = Column(String(64), ForeignKey("dim_products.product_id"), nullable=True, index=True)
     seller_id = Column(String(64), ForeignKey("dim_sellers.seller_id"), nullable=True, index=True)
-    order_total_usd = Column(Float, nullable=False, default=0.0)
-    freight_value_usd = Column(Float, nullable=False, default=0.0)
+    order_total_usd = Column(Numeric(12, 2), nullable=False, default=0)
+    freight_value_usd = Column(Numeric(12, 2), nullable=False, default=0)
     order_status = Column(String(32), nullable=False, default="unknown")
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow())
 
@@ -94,7 +95,7 @@ class DimReviews(Base):
     __tablename__ = "dim_reviews"
 
     review_id = Column(String(64), primary_key=True)
-    order_id = Column(String(64), ForeignKey("fact_orders.order_id"), nullable=False, index=True)
+    order_id = Column(String(64), ForeignKey("fact_orders.order_id"), nullable=False, index=True, unique=True)
     review_score = Column(Integer, nullable=True)
     review_comment = Column(Text, nullable=True)
 
