@@ -140,18 +140,17 @@ def _log_query(
     """Persist a query execution record to the query_log table."""
     try:
         _ensure_schema_exists()
-        session = get_session()
-        log_entry = QueryLog(
-            question=question,
-            generated_sql=generated_sql,
-            latency_ms=latency_ms,
-            tables_used=",".join(tables_used),
-            error=error,
-            created_at=datetime.utcnow(),
-        )
-        session.add(log_entry)
-        session.commit()
-        session.close()
+        with get_session() as session:
+            log_entry = QueryLog(
+                question=question,
+                generated_sql=generated_sql,
+                latency_ms=latency_ms,
+                tables_used=",".join(tables_used),
+                error=error,
+                created_at=datetime.utcnow(),
+            )
+            session.add(log_entry)
+            session.commit()
     except Exception as exc:
         logger.error("Failed to write to query_log: %s", exc)
 
