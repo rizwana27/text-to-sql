@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import ChatWindow from './components/ChatWindow'
 import SchemaExplorer from './components/SchemaExplorer'
 import ApprovalModal from './components/ApprovalModal'
+import EvalDashboard from './components/EvalDashboard'
 import { getSchema, postApprove, type SchemaTable, type QueryResponse } from './api'
 
 export interface Message {
@@ -11,11 +12,14 @@ export interface Message {
   timestamp: Date
 }
 
+type ActiveTab = 'chat' | 'eval'
+
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([])
   const [schema, setSchema] = useState<SchemaTable[]>([])
   const [activeTables, setActiveTables] = useState<string[]>([])
   const [pendingApproval, setPendingApproval] = useState<QueryResponse | null>(null)
+  const [activeTab, setActiveTab] = useState<ActiveTab>('chat')
 
   useEffect(() => {
     getSchema()
@@ -96,11 +100,47 @@ export default function App() {
 
       {/* Main area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <ChatWindow
-          messages={messages}
-          setMessages={setMessages}
-          onAnswer={handleAnswer}
-        />
+        {/* Tab bar */}
+        <div style={{
+          display: 'flex',
+          borderBottom: '1px solid var(--border-color)',
+          background: 'var(--bg-secondary)',
+          flexShrink: 0,
+        }}>
+          {(['chat', 'eval'] as ActiveTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '10px 20px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: `2px solid ${activeTab === tab ? 'var(--accent-green)' : 'transparent'}`,
+                color: activeTab === tab ? 'var(--accent-green)' : 'var(--text-secondary)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '13px',
+                fontWeight: activeTab === tab ? 700 : 400,
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                transition: 'color 0.15s',
+              }}
+            >
+              {tab === 'chat' ? '💬 Chat' : '📊 Evaluation'}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        {activeTab === 'chat' ? (
+          <ChatWindow
+            messages={messages}
+            setMessages={setMessages}
+            onAnswer={handleAnswer}
+          />
+        ) : (
+          <EvalDashboard />
+        )}
       </div>
 
       {/* Approval modal */}

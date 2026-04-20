@@ -112,3 +112,18 @@ class QueryLog(Base):
     tables_used = Column(Text, nullable=True)  # comma-separated list
     error = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow())
+
+
+class EvalLog(Base):
+    __tablename__ = "eval_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(String(64), nullable=False, index=True)  # UUID grouping a full eval run
+    question_id = Column(Integer, nullable=False)
+    question = Column(Text, nullable=False)
+    expected_sql = Column(Text, nullable=False)
+    generated_sql = Column(Text, nullable=True)
+    passed = Column(Boolean, nullable=False, default=False)
+    latency_ms = Column(Integer, nullable=True)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.utcnow())

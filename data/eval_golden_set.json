@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "question": "How many total orders are in the database?",
+    "expected_sql": "SELECT COUNT(*) AS total_orders FROM fact_orders",
+    "expected_answer": "Single row with count of all orders"
+  },
+  {
+    "id": 2,
+    "question": "What are the top 5 product categories by total revenue for delivered orders?",
+    "expected_sql": "SELECT dp.category_name, SUM(fo.order_total_usd) AS total_revenue FROM fact_orders fo JOIN dim_products dp ON fo.product_id = dp.product_id WHERE fo.order_status = 'delivered' GROUP BY dp.category_name ORDER BY total_revenue DESC LIMIT 5",
+    "expected_answer": "Top 5 product categories by GMV for delivered orders"
+  },
+  {
+    "id": 3,
+    "question": "What is the average review score across all reviews?",
+    "expected_sql": "SELECT ROUND(AVG(CAST(review_score AS FLOAT)), 2) AS avg_review_score FROM dim_reviews",
+    "expected_answer": "Average review score (1-5 scale)"
+  },
+  {
+    "id": 4,
+    "question": "How many active customers are there?",
+    "expected_sql": "SELECT COUNT(*) AS active_customers FROM dim_users WHERE is_active_member = 1",
+    "expected_answer": "Count of customers with is_active_member = 1"
+  },
+  {
+    "id": 5,
+    "question": "Which are the top 5 Brazilian states by number of orders?",
+    "expected_sql": "SELECT du.state, COUNT(*) AS order_count FROM fact_orders fo JOIN dim_users du ON fo.user_id = du.user_id GROUP BY du.state ORDER BY order_count DESC LIMIT 5",
+    "expected_answer": "Top 5 states by order volume"
+  },
+  {
+    "id": 6,
+    "question": "How many distinct sellers are in the database?",
+    "expected_sql": "SELECT COUNT(*) AS total_sellers FROM dim_sellers",
+    "expected_answer": "Count of all unique sellers"
+  },
+  {
+    "id": 7,
+    "question": "What is the average order value in USD for delivered orders?",
+    "expected_sql": "SELECT ROUND(AVG(fo.order_total_usd), 2) AS avg_order_value FROM fact_orders fo WHERE fo.order_status = 'delivered'",
+    "expected_answer": "Average order total (USD) for delivered orders"
+  },
+  {
+    "id": 8,
+    "question": "What are the top 5 sellers by total revenue?",
+    "expected_sql": "SELECT ds.seller_id, ROUND(SUM(fo.order_total_usd), 2) AS total_revenue FROM fact_orders fo JOIN dim_sellers ds ON fo.seller_id = ds.seller_id GROUP BY ds.seller_id ORDER BY total_revenue DESC LIMIT 5",
+    "expected_answer": "Top 5 sellers ranked by total GMV"
+  },
+  {
+    "id": 9,
+    "question": "How many orders were placed in each year?",
+    "expected_sql": "SELECT strftime('%Y', fo.created_at) AS order_year, COUNT(*) AS order_count FROM fact_orders fo GROUP BY order_year ORDER BY order_year",
+    "expected_answer": "Order counts grouped by year"
+  },
+  {
+    "id": 10,
+    "question": "What percentage of orders were cancelled?",
+    "expected_sql": "SELECT ROUND(100.0 * SUM(CASE WHEN fo.order_status = 'canceled' THEN 1 ELSE 0 END) / COUNT(*), 2) AS cancellation_rate_pct FROM fact_orders fo",
+    "expected_answer": "Percentage of all orders with status = cancelled"
+  },
+  {
+    "id": 11,
+    "question": "What is the average freight cost in USD for delivered orders?",
+    "expected_sql": "SELECT ROUND(AVG(fo.freight_value_usd), 2) AS avg_freight_usd FROM fact_orders fo WHERE fo.order_status = 'delivered'",
+    "expected_answer": "Average freight value for delivered orders"
+  },
+  {
+    "id": 12,
+    "question": "How many customers have placed more than one order?",
+    "expected_sql": "SELECT COUNT(*) AS repeat_customers FROM (SELECT user_id FROM fact_orders GROUP BY user_id HAVING COUNT(*) > 1)",
+    "expected_answer": "Count of customers with more than one order"
+  }
+]
