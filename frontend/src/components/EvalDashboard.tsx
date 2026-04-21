@@ -30,6 +30,7 @@ export default function EvalDashboard() {
   return (
     <div style={{
       flex: 1,
+      minHeight: 0,
       display: 'flex',
       flexDirection: 'column',
       overflow: 'auto',
@@ -134,6 +135,9 @@ export default function EvalDashboard() {
             border: '1px solid var(--border-color)',
             borderRadius: '8px',
             overflow: 'hidden',
+            maxHeight: '420px',
+            display: 'flex',
+            flexDirection: 'column',
           }}>
             {/* Table header bar */}
             <div style={{
@@ -154,7 +158,7 @@ export default function EvalDashboard() {
               <span>{summary.total_questions} questions</span>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
               <table style={{
                 width: '100%',
                 borderCollapse: 'collapse',
