@@ -20,6 +20,12 @@ class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Natural-language question to convert to SQL")
 
 
+class ChartInfo(BaseModel):
+    type: str  # "bar" | "line" | "none"
+    x_col: str | None = None
+    y_col: str | None = None
+
+
 class QueryResponse(BaseModel):
     sql: str
     results: list[dict[str, Any]]
@@ -27,6 +33,7 @@ class QueryResponse(BaseModel):
     requires_approval: bool
     approval_reason: str = ""
     latency_ms: int
+    chart: ChartInfo = ChartInfo(type="none")
 
 
 class ApproveRequest(BaseModel):

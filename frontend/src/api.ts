@@ -2,6 +2,12 @@ import axios from 'axios'
 
 const api = axios.create({ baseURL: '/' })
 
+export interface ChartInfo {
+  type: 'bar' | 'line' | 'none'
+  x_col: string | null
+  y_col: string | null
+}
+
 export interface QueryResponse {
   sql: string
   results: Record<string, unknown>[]
@@ -9,6 +15,7 @@ export interface QueryResponse {
   requires_approval: boolean
   approval_reason?: string
   latency_ms: number
+  chart: ChartInfo
 }
 
 export interface ApproveResponse {
@@ -75,5 +82,18 @@ export async function postEval(): Promise<EvalSummary> {
 
 export async function getEvalMeta(): Promise<{ total_questions: number }> {
   const { data } = await api.get<{ total_questions: number }>('/api/eval/meta')
+  return data
+}
+
+export interface HistoryItem {
+  id: number
+  question: string
+  generated_sql: string | null
+  latency_ms: number | null
+  created_at: string
+}
+
+export async function getHistory(): Promise<HistoryItem[]> {
+  const { data } = await api.get<HistoryItem[]>('/api/history')
   return data
 }

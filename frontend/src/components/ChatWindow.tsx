@@ -2,22 +2,33 @@ import { useState, useRef, useEffect } from 'react'
 import { postQuery, type QueryResponse } from '../api'
 import SqlDisplay from './SqlDisplay'
 import ResultsTable from './ResultsTable'
+import ChartDisplay from './ChartDisplay'
 import type { Message } from '../App'
 
 interface Props {
   messages: Message[]
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
   onAnswer: (response: QueryResponse) => void
+  prefillQuestion?: string
+  onPrefillConsumed?: () => void
 }
 
-export default function ChatWindow({ messages, setMessages, onAnswer }: Props) {
+export default function ChatWindow({ messages, setMessages, onAnswer, prefillQuestion, onPrefillConsumed }: Props) {
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
+  const [chartView, setChartView] = useState<Record<string, boolean>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    if (prefillQuestion) {
+      setQuestion(prefillQuestion)
+      onPrefillConsumed?.()
+    }
+  }, [prefillQuestion])
 
   const handleSubmit = async () => {
     const q = question.trim()
@@ -109,6 +120,8 @@ export default function ChatWindow({ messages, setMessages, onAnswer }: Props) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {(() => {
                   const r = msg.content as QueryResponse
+                  const hasChart = r.chart?.type !== 'none' && r.chart?.type != null
+                  const showingChart = chartView[msg.id] ?? false
                   return (
                     <>
                       <SqlDisplay
@@ -117,7 +130,32 @@ export default function ChatWindow({ messages, setMessages, onAnswer }: Props) {
                         requiresApproval={r.requires_approval}
                         approvalReason={r.approval_reason}
                       />
-                      {r.results.length > 0 && <ResultsTable results={r.results} />}
+                      {r.results.length > 0 && (
+                        <>
+                          {hasChart && (
+                            <button
+                              onClick={() => setChartView((v) => ({ ...v, [msg.id]: !showingChart }))}
+                              style={{
+                                alignSelf: 'flex-start',
+                                background: 'var(--bg-tertiary)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '4px',
+                                color: 'var(--accent-cyan)',
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '11px',
+                                padding: '4px 10px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {showingChart ? '📋 Show Table' : '📈 Show Chart'}
+                            </button>
+                          )}
+                          {showingChart && hasChart
+                            ? <ChartDisplay results={r.results} chart={r.chart} />
+                            : <ResultsTable results={r.results} />
+                          }
+                        </>
+                      )}
                       {r.results.length === 0 && !r.requires_approval && (
                         <div style={{
                           color: 'var(--text-secondary)',

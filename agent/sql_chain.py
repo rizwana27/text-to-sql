@@ -193,6 +193,33 @@ def _execute_sql(sql: str) -> list[dict[str, Any]]:
         return [dict(zip(columns, row)) for row in rows]
 
 
+_DATE_KEYWORDS = {"date", "time", "year", "month", "day", "week", "timestamp", "created", "at"}
+_NUMERIC_TYPES = (int, float)
+
+
+def _classify_chart(results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Heuristically classify what chart type best fits the result set."""
+    if not results or len(results) < 2:
+        return {"type": "none", "x_col": None, "y_col": None}
+
+    columns = list(results[0].keys())
+    if len(columns) < 2:
+        return {"type": "none", "x_col": None, "y_col": None}
+
+    date_cols = [c for c in columns if any(k in c.lower() for k in _DATE_KEYWORDS)]
+    numeric_cols = [c for c in columns if isinstance(results[0].get(c), _NUMERIC_TYPES)]
+    text_cols = [c for c in columns if c not in numeric_cols]
+
+    if date_cols and numeric_cols:
+        return {"type": "line", "x_col": date_cols[0], "y_col": numeric_cols[0]}
+    if text_cols and numeric_cols:
+        return {"type": "bar", "x_col": text_cols[0], "y_col": numeric_cols[0]}
+    if len(numeric_cols) >= 2:
+        return {"type": "bar", "x_col": numeric_cols[0], "y_col": numeric_cols[1]}
+
+    return {"type": "none", "x_col": None, "y_col": None}
+
+
 async def run_query(question: str) -> dict[str, Any]:
     """
     Full LCEL pipeline: natural-language question → SQL → executed results.
@@ -204,6 +231,7 @@ async def run_query(question: str) -> dict[str, Any]:
             "tables_used": list[str],
             "requires_approval": bool,
             "latency_ms": int,
+            "chart": {"type": str, "x_col": str|None, "y_col": str|None},
         }
     """
     start_time = time.monotonic()
@@ -256,6 +284,7 @@ async def run_query(question: str) -> dict[str, Any]:
                 "requires_approval": True,
                 "approval_reason": guard_result.get("reason", ""),
                 "latency_ms": latency_ms,
+                "chart": {"type": "none", "x_col": None, "y_col": None},
             }
 
         # Step 7: Execute the SQL
@@ -271,6 +300,7 @@ async def run_query(question: str) -> dict[str, Any]:
             "tables_used": tables_used,
             "requires_approval": False,
             "latency_ms": latency_ms,
+            "chart": _classify_chart(results),
         }
 
     except Exception as exc:

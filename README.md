@@ -214,13 +214,52 @@ React renders the SQL in a syntax-highlighted box and the results as a pageable 
 
 ---
 
-## 7. 📁 Project Structure
+## 7. ✨ New Features
+
+### 📊 Evaluation Dashboard
+
+An automated RAGAS-style SQL evaluation pipeline that runs every question in a golden test set through the full LLM pipeline and scores the output.
+
+**How to use:** Click the **Evaluation** tab in the app and press **Run Evaluation**.
+
+**How it works:**
+1. Each question is run through `run_query()` to generate and execute SQL.
+2. The expected SQL is also executed directly to produce a reference result set.
+3. Both result sets are compared value-by-value (order-agnostic, column-name-agnostic).
+4. Pass/fail, latency, and any errors are persisted to the `eval_log` table.
+
+**Metrics tracked:** Execution accuracy (%), pass/fail per question, average latency (ms), run ID for historical comparison.
+
+---
+
+### 📈 Chart Auto-Generation
+
+After SQL results are returned, the pipeline automatically classifies the result shape and suggests the best chart type.
+
+**How it works:** `_classify_chart()` in `sql_chain.py` inspects column names and value types:
+- Date/time column + numeric column → **Line chart**
+- Category column + numeric column → **Bar chart**
+- Otherwise → **Table only**
+
+A **Show Chart / Show Table** toggle appears below each result set when a chart is available. Charts are rendered using [Recharts](https://recharts.org).
+
+---
+
+### 🕘 Query History
+
+A collapsible left sidebar shows the last 20 queries from the `query_log` table. Clicking any past question pre-fills the chat input so it can be re-run or modified.
+
+The sidebar collapses to a narrow strip to maximize screen space and expands with a single click.
+
+---
+
+## 8. 📁 Project Structure
 
 ```
 text-to-sql/
 │
 ├── agent/                      # Core AI pipeline
-│   ├── sql_chain.py            # Main LCEL pipeline: question → SQL → results
+│   ├── sql_chain.py            # Main LCEL pipeline: question → SQL → results + chart classification
 │   ├── retriever.py            # RAG: embed question, query ChromaDB
 │   ├── semantic_layer.py       # Business descriptions for every table/column
 │   ├── build_index.py          # One-time script: embed schema into ChromaDB
@@ -232,25 +271,31 @@ text-to-sql/
 │   └── routes/
 │       ├── query.py            # POST /query — runs the full pipeline
 │       ├── schema.py           # GET /schema — returns table descriptions
-│       └── health.py           # GET /health — liveness check
+│       ├── health.py           # GET /health — liveness check
+│       ├── eval.py             # POST /eval, GET /eval/meta — golden-set evaluation
+│       └── history.py          # GET /history — last 20 queries from query_log
 │
 ├── model/                      # SQLAlchemy ORM models
 │   ├── database.py             # Engine + session factory
-│   └── schema.py               # Table definitions (star schema + query_log)
+│   └── schema.py               # Table definitions (star schema + query_log + eval_log)
 │
 ├── frontend/                   # React + TypeScript UI
 │   └── src/
 │       ├── App.tsx             # Root component
 │       ├── api.ts              # HTTP client
 │       └── components/
-│           ├── ChatWindow.tsx       # Question input box
+│           ├── ChatWindow.tsx       # Question input + message history
 │           ├── SqlDisplay.tsx       # Syntax-highlighted SQL output
 │           ├── ResultsTable.tsx     # Pageable results grid
+│           ├── ChartDisplay.tsx     # Bar/line chart via Recharts
+│           ├── QueryHistory.tsx     # Collapsible query history sidebar
+│           ├── EvalDashboard.tsx    # Evaluation metrics dashboard
 │           ├── SchemaExplorer.tsx   # Browse available tables/columns
 │           └── ApprovalModal.tsx    # HITL confirmation dialog
 │
 ├── data/
 │   ├── raw/                    # Raw Olist CSV files
+│   ├── eval_golden_set.json    # 12-question golden test set for evaluation
 │   └── seed.py                 # Load CSVs → SQLite (run once)
 │
 ├── infra/                      # Deployment scripts (Linux/nginx/systemd)

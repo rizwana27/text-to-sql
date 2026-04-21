@@ -175,17 +175,23 @@ def load_dim_sellers(sellers_df: pd.DataFrame, engine) -> None:
 def load_dim_geography(geo_df: pd.DataFrame, engine) -> None:
     """Load dim_geography from olist_geolocation_dataset.csv (deduplicated by zip+city)."""
     logger.info("Loading dim_geography (raw %d rows)...", len(geo_df))
-    geo_dedup = geo_df.drop_duplicates(subset=["geolocation_zip_code_prefix", "geolocation_city"])
-    records = [
-        {
-            "zip_code_prefix": str(row["geolocation_zip_code_prefix"]).zfill(5),
-            "city": str(row.get("geolocation_city", "")).strip().title() or None,
+    seen: set[tuple] = set()
+    records = []
+    for _, row in geo_df.iterrows():
+        key = (
+            str(row["geolocation_zip_code_prefix"]).zfill(5),
+            str(row.get("geolocation_city", "")).strip().title(),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        records.append({
+            "zip_code_prefix": key[0],
+            "city": key[1] or None,
             "state": str(row.get("geolocation_state", "")).strip().upper() or None,
             "lat": float(row["geolocation_lat"]) if pd.notna(row.get("geolocation_lat")) else None,
             "lng": float(row["geolocation_lng"]) if pd.notna(row.get("geolocation_lng")) else None,
-        }
-        for _, row in geo_dedup.iterrows()
-    ]
+        })
 
     from sqlalchemy.orm import Session
 
@@ -208,14 +214,28 @@ def load_fact_orders(
     Each order_item becomes one fact row. Revenue is converted BRL → USD.
     """
     logger.info("Joining orders + order_items for fact_orders...")
-    # Map customer_id → customer_unique_id
     cust_map = customers_df.set_index("customer_id")["customer_unique_id"].to_dict()
 
     merged = pd.merge(orders_df, items_df, on="order_id", how="left")
     logger.info("Merged orders+items: %d rows", len(merged))
 
+    # Aggregate multi-item orders into one row per order_id
+    agg = (
+        merged.groupby("order_id", as_index=False)
+        .agg(
+            customer_id=("customer_id", "first"),
+            product_id=("product_id", "first"),
+            seller_id=("seller_id", "first"),
+            price=("price", "sum"),
+            freight_value=("freight_value", "sum"),
+            order_status=("order_status", "first"),
+            order_purchase_timestamp=("order_purchase_timestamp", "first"),
+        )
+    )
+    logger.info("Aggregated to %d unique orders", len(agg))
+
     records = []
-    for _, row in merged.iterrows():
+    for _, row in agg.iterrows():
         price = float(row["price"]) if pd.notna(row.get("price")) else 0.0
         freight = float(row["freight_value"]) if pd.notna(row.get("freight_value")) else 0.0
         cust_id = str(row.get("customer_id", ""))
@@ -256,8 +276,12 @@ def load_fact_orders(
 def load_dim_reviews(reviews_df: pd.DataFrame, engine) -> None:
     """Load dim_reviews from olist_order_reviews_dataset.csv."""
     logger.info("Loading dim_reviews (%d rows)...", len(reviews_df))
-    # Deduplicate by review_id
-    reviews_dedup = reviews_df.drop_duplicates(subset=["review_id"])
+    # Both review_id (PK) and order_id (UNIQUE) must be unique
+    reviews_dedup = (
+        reviews_df
+        .drop_duplicates(subset=["review_id"])
+        .drop_duplicates(subset=["order_id"], keep="first")
+    )
     records = [
         {
             "review_id": str(row["review_id"]),

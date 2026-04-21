@@ -3,6 +3,7 @@ import ChatWindow from './components/ChatWindow'
 import SchemaExplorer from './components/SchemaExplorer'
 import ApprovalModal from './components/ApprovalModal'
 import EvalDashboard from './components/EvalDashboard'
+import QueryHistory from './components/QueryHistory'
 import { getSchema, postApprove, type SchemaTable, type QueryResponse } from './api'
 
 export interface Message {
@@ -20,6 +21,7 @@ export default function App() {
   const [activeTables, setActiveTables] = useState<string[]>([])
   const [pendingApproval, setPendingApproval] = useState<QueryResponse | null>(null)
   const [activeTab, setActiveTab] = useState<ActiveTab>('chat')
+  const [prefillQuestion, setPrefillQuestion] = useState<string | undefined>()
 
   useEffect(() => {
     getSchema()
@@ -75,7 +77,12 @@ export default function App() {
       overflow: 'hidden',
       background: 'var(--bg-primary)',
     }}>
-      {/* Sidebar */}
+      {/* History sidebar */}
+      <QueryHistory
+        onSelect={(q) => { setPrefillQuestion(q); setActiveTab('chat') }}
+      />
+
+      {/* Schema sidebar */}
       <div style={{
         width: '280px',
         minWidth: '280px',
@@ -137,6 +144,8 @@ export default function App() {
             messages={messages}
             setMessages={setMessages}
             onAnswer={handleAnswer}
+            prefillQuestion={prefillQuestion}
+            onPrefillConsumed={() => setPrefillQuestion(undefined)}
           />
         ) : (
           <EvalDashboard />

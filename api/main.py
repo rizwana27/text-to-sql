@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.routes import eval, health, query, schema
+from api.routes import eval, health, history, query, schema
 
 load_dotenv()
 
@@ -54,3 +54,4 @@ app.include_router(query.router)
 app.include_router(schema.router)
 app.include_router(health.router)
 app.include_router(eval.router)
+app.include_router(history.router)
