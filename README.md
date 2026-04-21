@@ -408,3 +408,6 @@ Open [http://localhost:5173](http://localhost:5173) in your browser and start as
 | `EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model used for both indexing and retrieval. |
 | `LOG_LEVEL` | `INFO` | Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
 | `ALLOWED_ORIGINS` | `*` | Comma-separated CORS origins. Set to your domain in production. |
+
+### Medium blog link-
+[https://medium.com/@shaikrizwanahussain/i-extended-an-open-source-text-to-sql-system-241be9a81b30?postPublishedType=repub](https://medium.com/@shaikrizwanahussain/i-extended-an-open-source-text-to-sql-system-241be9a81b30?postPublishedType=repub)
