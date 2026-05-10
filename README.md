@@ -351,7 +351,7 @@ The database uses a **star schema** — a design pattern common in data warehous
 ### 1. Clone and install Python dependencies
 
 ```bash
-git clone https://github.com/nerdjerry/text-to-sql.git
+git clone [https://github.com/rizwana27/text-to-sql.git](https://github.com/rizwana27/text-to-sql.git)
 cd text-to-sql
 pip install -r requirements.txt
 ```
